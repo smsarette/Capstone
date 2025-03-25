@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <link rel="stylesheet" href="css/leaflet.css">
+        <link rel="stylesheet" href="css/L.Control.Layers.Tree.css">
+        <link rel="stylesheet" href="css/L.Control.Locate.min.css">
+        <link rel="stylesheet" href="css/qgis2web.css">
+        <link rel="stylesheet" href="css/fontawesome-all.min.css">
+        <link rel="stylesheet" href="css/leaflet-control-geocoder.Geocoder.css">
+        <style>
+        html, body, #map {
+            width: 100%;
+            height: 100%;
+            padding: 0;
+            margin: 0;
+        }
+        </style>
+        <title></title>
+    </head>
+    <body>
+        <div id="map">
+        </div>
+        <script src="js/qgis2web_expressions.js"></script>
+        <script src="js/leaflet.js"></script>
+        <script src="js/L.Control.Layers.Tree.min.js"></script>
+        <script src="js/L.Control.Locate.min.js"></script>
+        <script src="js/leaflet.rotatedMarker.js"></script>
+        <script src="js/leaflet.pattern.js"></script>
+        <script src="js/leaflet-hash.js"></script>
+        <script src="js/Autolinker.min.js"></script>
+        <script src="js/rbush.min.js"></script>
+        <script src="js/labelgun.min.js"></script>
+        <script src="js/labels.js"></script>
+        <script src="js/leaflet-control-geocoder.Geocoder.js"></script>
+        <!-- Your custom script for setting icon styles based on OpenState -->
+<script>
+    // Define the style for the icon based on whether the shelter is open or closed
+    function getIconForOpenState(openState) {
+        var iconColor;
+        if (openState === 'Open') {
+          iconColor = 'green';
+        } else if (openState === 'Closed') {
+            iconColor = 'red';
+        } else {
+            iconColor = 'blue'
+        }
+
+        return L.divIcon({
+            className: 'custom-icon', 
+            html: '<div style="background-color: ' + iconColor + '; width: 10px; height: 10px; border-radius: 50%;"></div>',
+            iconSize: [10, 10],
+            iconAnchor: [5, 10],
+            popupAnchor: [0, -10]
+        });
+    }
+</script>
+        <script src="data/full_shelter_data_1.js"></script>
+        <script>
+        var highlightLayer;
+        function highlightFeature(e) {
+            highlightLayer = e.target;
+
+            if (e.target.feature.geometry.type === 'LineString' || e.target.feature.geometry.type === 'MultiLineString') {
+              highlightLayer.setStyle({
+                color: '#ffff00',
+              });
+            } else {
+              highlightLayer.setStyle({
+                fillColor: '#ffff00',
+                fillOpacity: 1
+              });
+            }
+            highlightLayer.openPopup();
+        }
+        var map = L.map('map', {
+            zoomControl:false, maxZoom:28, minZoom:1
+        }).fitBounds([[25.706360173393435,-125.50899855738118],[51.22497117262839,-70.82858535738143]]);
+        var hash = new L.Hash(map);
+        map.attributionControl.setPrefix('<a href="https://github.com/tomchadwin/qgis2web" target="_blank">qgis2web</a> &middot; <a href="https://leafletjs.com" title="A JS library for interactive maps">Leaflet</a> &middot; <a href="https://qgis.org">QGIS</a>');
+        var autolinker = new Autolinker({truncate: {length: 30, location: 'smart'}});
+        // remove popup's row if "visible-with-data"
+        function removeEmptyRowsFromPopupContent(content, feature) {
+         var tempDiv = document.createElement('div');
+         tempDiv.innerHTML = content;
+         var rows = tempDiv.querySelectorAll('tr');
+         for (var i = 0; i < rows.length; i++) {
+             var td = rows[i].querySelector('td.visible-with-data');
+             var key = td ? td.id : '';
+             if (td && td.classList.contains('visible-with-data') && feature.properties[key] == null) {
+                 rows[i].parentNode.removeChild(rows[i]);
+             }
+         }
+         return tempDiv.innerHTML;
+        }
+        // add class to format popup if it contains media
+		function addClassToPopupIfMedia(content, popup) {
+			var tempDiv = document.createElement('div');
+			tempDiv.innerHTML = content;
+			if (tempDiv.querySelector('td img')) {
+				popup._contentNode.classList.add('media');
+					// Delay to force the redraw
+					setTimeout(function() {
+						popup.update();
+					}, 10);
+			} else {
+				popup._contentNode.classList.remove('media');
+			}
+		}
+        var zoomControl = L.control.zoom({
+            position: 'topleft'
+        }).addTo(map);
+        L.control.locate({locateOptions: {maxZoom: 19}}).addTo(map);
+        var bounds_group = new L.featureGroup([]);
+        function setBounds() {
+        }
+        map.createPane('pane_GoogleSatelliteHybrid_0');
+        map.getPane('pane_GoogleSatelliteHybrid_0').style.zIndex = 400;
+        var layer_GoogleSatelliteHybrid_0 = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+            pane: 'pane_GoogleSatelliteHybrid_0',
+            opacity: 1.0,
+            attribution: '',
+            minZoom: 1,
+            maxZoom: 28,
+        });
+        layer_GoogleSatelliteHybrid_0;
+        map.addLayer(layer_GoogleSatelliteHybrid_0);
+        function pop_full_shelter_data_1(feature, layer) {
+            setOpenState(feature);
+            var popupPinned = false;
+            // Event listener for mouseover (hover over the feature)
+            layer.on('mouseover', function(e) {
+                if(!popupPinned) {
+                    layer.openPopup();
+                }
+            });
+
+            // Event listener for mouseout (when mouse leaves the feature)
+            layer.on('mouseout', function(e) {
+               if (!popupPinned) {
+                   layer.closePopup();
+               }
+            });
+
+            // Event listener for click (toggle popup open/close)
+            layer.on('click', function(e) {
+                if (!popupPinned) {
+                    layer.openPopup(); // open the popup if its open
+                    popupPinned = true; // pins the popup so it can be reopened
+                } else {
+                    layer.closePopup(); // close the popup if not open
+                    popupPineed = false; // unpins the popup so it doesn't auto-close on mouseout
+                }
+            });
+
+            // Close popup when clicking elsewhere on the map
+            map.on('click', function(e) {
+                if (popupPinned) {
+                    popupPinned = false; //unpins the popup when clicking elsewhere
+                    layer.closePopup();
+                }
+            });
+            var popupContent = '<table>\
+                    <tr>\
+                        <th scope="row">Name</th>\
+                        <td colspan="2">' + (feature.properties['Name'] !== null ? autolinker.link(String(feature.properties['Name']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Open State</th>\
+                        <td colspan="2">' + (feature.properties['OpenState'] !== null ? feature.properties['OpenState'] : 'Unknown') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Hours</th>\
+                        <td colspan="2">' + (feature.properties['Hours'] !== null ? autolinker.link(String(feature.properties['Hours']).replace(/'/g, '\'').toLocaleString().split(';').join('<br>')) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Address</th>\
+                        <td colspan="2">' + (feature.properties['Address'] !== null ? autolinker.link(String(feature.properties['Address']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Phone</th>\
+                        <td colspan="2">' + (feature.properties['Phone'] !== null ? autolinker.link(String(feature.properties['Phone']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Website</th>\
+                        <td colspan="2">' + (feature.properties['Website'] !== null ? autolinker.link(String(feature.properties['Website']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Email</th>\
+                        <td colspan="2">' + (feature.properties['Email'] !== null ? autolinker.link(String(feature.properties['Email']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Shelter Type</th>\
+                        <td colspan="2">' + (feature.properties['Type'] !== null ? autolinker.link(String(feature.properties['Type']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { 
+                maxHeight: 400,
+                autoClose: false, 
+                closeOnClick: true 
+            });
+        }
+
+        function style_full_shelter_data_1_0() {
+            return {
+                pane: 'pane_full_shelter_data_1',
+                radius: 8.0,
+                opacity: 1,
+                color: 'rgba(61,128,53,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 2.0,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(173,200,170,1.0)',
+                interactive: true,
+            }
+        }
+        map.createPane('pane_full_shelter_data_1');
+        map.getPane('pane_full_shelter_data_1').style.zIndex = 401;
+        map.getPane('pane_full_shelter_data_1').style['mix-blend-mode'] = 'normal';
+        var layer_full_shelter_data_1 = new L.geoJson(json_full_shelter_data_1, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_full_shelter_data_1',
+            layerName: 'layer_full_shelter_data_1',
+            pane: 'pane_full_shelter_data_1',
+            onEachFeature: pop_full_shelter_data_1,
+            pointToLayer: function (feature, latlng) {
+                setOpenState(feature);
+                var openState = feature.properties['OpenState']; 
+                var icon = getIconForOpenState(openState); // Get the correct icon based on OpenState
+    
+                return L.marker(latlng, {
+                    icon: icon // Set the marker's icon to the one determined by OpenState
+                });
+            }
+        });
+        bounds_group.addLayer(layer_full_shelter_data_1);
+        map.addLayer(layer_full_shelter_data_1);
+        var osmGeocoder = new L.Control.Geocoder({
+            collapsed: true,
+            position: 'topleft',
+            text: 'Search',
+            title: 'Testing'
+        }).addTo(map);
+        document.getElementsByClassName('leaflet-control-geocoder-icon')[0]
+        .className += ' fa fa-search';
+        document.getElementsByClassName('leaflet-control-geocoder-icon')[0]
+        .title += 'Search for a place';
+        var overlaysTree = [
+            {label: '<img src="legend/full_shelter_data_1.png" /> full_shelter_data', layer: layer_full_shelter_data_1},
+            {label: "Google Satellite Hybrid", layer: layer_GoogleSatelliteHybrid_0},]
+        var lay = L.control.layers.tree(null, overlaysTree,{
+            //namedToggle: true,
+            //selectorBack: false,
+            //closedSymbol: '&#8862; &#x1f5c0;',
+            //openedSymbol: '&#8863; &#x1f5c1;',
+            //collapseAll: 'Collapse all',
+            //expandAll: 'Expand all',
+            collapsed: true,
+        });
+        lay.addTo(map);
+        setBounds();
+        </script>
+    </body>
+</html>
