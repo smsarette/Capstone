@@ -245,17 +245,6 @@
                 });
             }
         });
-     	var searchControl = new L.Control.Search({
-		layer: layer_full_shelter_data_1, // your shelter layer
-    		propertyName: 'Name',              // shelter name field
-    		marker: false,
-   		moveToLocation: function(latlng, title, map) {
-			map.setView(latlng, 12); // zoom in on match
-    		}
-  	});
-	searchControl.on('search:locationfound', function(e) {
-		e.layer.openPopup(); // optionally show popup
-  	});
 	map.addControl(searchControl);
         bounds_group.addLayer(layer_full_shelter_data_1);
         map.addLayer(layer_full_shelter_data_1);
